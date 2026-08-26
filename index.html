@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+  <link rel="stylesheet" href="aquor-ds/tokens/colors.css">
+  <link rel="stylesheet" href="aquor-ds/tokens/typography.css">
+  <link rel="stylesheet" href="aquor-ds/tokens/spacing.css">
+  <link rel="stylesheet" href="aquor-ds/tokens/base.css">
+  <link rel="stylesheet" href="aquor-ds/styles.css">
+  <script src="aquor-ds/_ds_bundle.js"></script>
+  <style>
+    body{margin:0;background:var(--surface-sunken);font-family:var(--font-body);}
+    a{color:var(--text-link);}
+    a:hover{color:var(--text-link-hover);}
+    @media (max-width:680px){
+      div[style*="max-width:1000px"]{padding-left:16px!important;padding-right:16px!important;}
+      div[style*="font-size:var(--text-h2-size)"]{font-size:26px!important;}
+    }
+  </style>
+</helmet>
+<div style="min-height:100vh;background:var(--surface-sunken);">
+  <div style="background:var(--surface-page);border-bottom:1px solid var(--border-default);">
+    <div style="max-width:1000px;margin:0 auto;padding:24px 32px;display:flex;align-items:center;gap:12px;">
+      <img src="aquor-ds/aquor-logo-primary.png" alt="Aquor" style="height:28px;width:auto;display:block;">
+      <div style="width:1px;height:24px;background:var(--border-default);"></div>
+      <div style="font-family:var(--font-display);font-weight:600;font-size:20px;color:var(--text-primary);">Launch Planner</div>
+      <sc-if value="{{ authUser }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-left:auto;display:flex;align-items:center;gap:12px;">
+          <span style="font-size:13px;color:var(--text-secondary);">{{ authUserEmail }}</span>
+          <x-import component-from-global-scope="AquorDesignSystem_fb15e1.Button" variant="secondary" size="sm" onClick="{{ onSignOut }}" hint-size="auto,32px">Sign out</x-import>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+
+  <sc-if value="{{ authChecked }}" hint-placeholder-val="{{ false }}">
+  <sc-if value="{{ authUser }}" hint-placeholder-val="{{ false }}">
+  <div style="max-width:1000px;margin:0 auto;padding:32px;display:flex;flex-direction:column;gap:20px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+      <div style="font-family:var(--font-display);font-weight:700;font-size:var(--text-h2-size);color:var(--text-primary);">Projects</div>
+    </div>
+
+    <sc-if value="{{ importMessage }}" hint-placeholder-val="{{ false }}">
+      <div style="background:var(--surface-page);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:12px 16px;font-size:14px;color:var(--text-primary);">{{ importMessage }}</div>
+    </sc-if>
+
+    <sc-if value="{{ loadError }}" hint-placeholder-val="{{ false }}">
+      <div style="background:#fdecea;border:1px solid var(--status-danger);color:var(--status-danger);border-radius:var(--radius-md);padding:12px 16px;font-size:14px;">{{ loadError }}</div>
+    </sc-if>
+
+    <div style="border:1px solid var(--border-default);border-radius:var(--radius-lg);box-shadow:var(--shadow-card);width:100%;box-sizing:border-box;overflow:hidden;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;background:var(--surface-page);padding:6px;">
+        <div style="display:flex;align-items:center;gap:4px;">
+          <sc-if value="{{ isTimelineView }}" hint-placeholder-val="{{ false }}">
+            <span style="padding:8px 16px;font-size:14px;color:var(--text-secondary);">Active projects</span>
+          </sc-if>
+          <sc-for list="{{ viewTabItems }}" as="vt" hint-placeholder-count="3">
+            <sc-if value="{{ isNotTimelineView }}" hint-placeholder-val="{{ true }}">
+              <button onClick="{{ vt.onClick }}" style="{{ vt.style }}">{{ vt.label }}</button>
+            </sc-if>
+          </sc-for>
+        </div>
+        <div style="display:flex;flex-shrink:0;">
+          <button onClick="{{ onSetListView }}" style="{{ viewToggleListStyle }}">List</button>
+          <button onClick="{{ onSetGridView }}" style="{{ viewToggleGridStyle }}">Grid</button>
+          <button onClick="{{ onSetTimelineView }}" style="{{ viewToggleTimelineStyle }}">Timeline</button>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;background:var(--surface-sunken);border-top:1px solid var(--border-default);padding:12px 16px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:13px;font-weight:600;color:var(--text-primary);white-space:nowrap;">Sort by</span>
+          <div style="min-width:160px;">
+            <x-import component-from-global-scope="AquorDesignSystem_fb15e1.Select" options="{{ sortOptions }}" value="{{ sortBy }}" onChange="{{ onSortByChange }}" hint-size="160px,40px"></x-import>
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;">
+          <input type="file" accept=".csv" ref="{{ importInputRef }}" onChange="{{ onImportFileChange }}" style="display:none;">
+          <x-import component-from-global-scope="AquorDesignSystem_fb15e1.Button" variant="secondary" size="sm" onClick="{{ onClickImport }}" hint-size="auto,32px"><span style="white-space:nowrap;">Import CSV</span></x-import>
+          <x-import component-from-global-scope="AquorDesignSystem_fb15e1.Button" variant="primary" size="sm" onClick="{{ onToggleAddForm }}" hint-size="auto,32px"><span style="white-space:nowrap;">+ New Project</span></x-import>
+        </div>
+      </div>
+    </div>
+
+    <sc-if value="{{ showAddForm }}" hint-placeholder-val="{{ false }}">
+      <x-import component-from-global-scope="AquorDesignSystem_fb15e1.Card" hint-size="100%,auto">
+        <div style="font-family:var(--font-display);font-weight:700;font-size:var(--text-h4-size);color:var(--text-primary);margin-bottom:14px;">New project</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+          <div style="min-width:220px;flex:1;">
+            <x-import component-from-global-scope="AquorDesignSystem_fb15e1.Input" label="Project name" value="{{ newName }}" onChange="{{ onNewNameChange }}" hint-size="220px,64px"></x-import>
+          </div>
+          <div style="min-width:180px;">
+            <x-import component-from-global-scope="AquorDesignSystem_fb15e1.Input" label="Target launch" type="date" value="{{ newTargetLaunch }}" onChange="{{ onNewTargetLaunchChange }}" hint-size="180px,64px"></x-import>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end;">
+          <x-import component-from-global-scope="AquorDesignSystem_fb15e1.Button" variant="secondary" onClick="{{ onToggleAddForm }}" hint-size="auto,40px">Cancel</x-import>
+          <x-import component-from-global-scope="AquorDesignSystem_fb15e1.Button" variant="primary" onClick="{{ onCreateProject }}" hint-size="auto,40px">Create project</x-import>
+        </div>
+      </x-import>
+    </sc-if>
+
+    <sc-if value="{{ isNotTimelineView }}" hint-placeholder-val="{{ true }}">
+    <sc-if value="{{ hasProjects }}" hint-placeholder-val="{{ true }}">
+      <div style="{{ projectsContainerStyle }}">
+        <sc-for list="{{ projectRows }}" as="proj" hint-placeholder-count="3">
+          <sc-if value="{{ isListView }}" hint-placeholder-val="{{ true }}">
+          <div style="transition:transform 0.15s ease, box-shadow 0.15s ease;border-radius:var(--radius-lg);" style-hover="transform:translateY(-3px);box-shadow:0 12px 28px rgba(0,0,0,0.16);" onMouseLeave="{{ proj.onCloseMoveMenu }}">
+          <x-import component-from-global-scope="AquorDesignSystem_fb15e1.Card" hint-size="100%,auto">
+            <div onClick="{{ proj.onOpen }}" style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;cursor:pointer;">
+              <div style="display:flex;gap:12px;align-items:center;">
+                <sc-if value="{{ proj.hasImage }}" hint-placeholder-val="{{ false }}">
+                  <img src="{{ proj.image }}" alt="" style="width:56px;height:56px;border-radius:var(--radius-md);object-fit:cover;flex-shrink:0;background:var(--neutral-100);">
+                </sc-if>
+                <div>
+                  <div style="font-family:var(--font-display);font-weight:700;font-size:var(--text-h4-size);color:var(--text-primary);display:flex;align-items:center;gap:8px;">
+                    {{ proj.name }}
+                    <sc-if value="{{ proj.hasBadge }}" hint-placeholder-val="{{ false }}">
+                      <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:var(--radius-pill);background:{{ proj.badgeBg }};color:{{ proj.badgeColor }};">{{ proj.badgeLabel }}</span>
+                    </sc-if>
+                  </div>
+                  <div style="display:flex;gap:16px;margin-top:6px;color:var(--text-secondary);font-size:13px;flex-wrap:wrap;">
+                    <span>Launch date: {{ proj.launchDateLabel }}</span>
+                    <span>Updated {{ proj.updatedLabel }}</span>
+                    <sc-if value="{{ proj.hasCategory }}" hint-placeholder-val="{{ false }}">
+                      <span>Category: {{ proj.category }}</span>
+                    </sc-if>
+                  </div>
+                </div>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center;" onClick="{{ stopPropagation }}">
+                <div style="position:relative;flex-shrink:0;">
+                  <x-import component-from-global-scope="AquorDesignSystem_fb15e1.Button" variant="secondary" size="sm" onClick="{{ proj.onToggleMoveMenu }}" hint-size="auto,32px"><span style="white-space:nowrap;">Move to <span style="margin-left:4px;">▾</span></span></x-import>
+                  <sc-if value="{{ proj.moveMenuOpen }}" hint-placeholder-val="{{ false }}">
+                    <div style="position:absolute;right:0;top:40px;background:var(--surface-page);border:1px solid var(--border-default);border-radius:var(--radius-md);box-shadow:0 4px 16px rgba(0,0,0,0.12);min-width:150px;z-index:20;overflow:hidden;">
+                      <sc-for list="{{ proj.moveOptions }}" as="opt" hint-placeholder-count="2">
+                        <button onClick="{{ opt.onClick }}" style="display:block;width:100%;text-align:left;padding:10px 14px;border:none;background:none;font-size:14px;font-family:var(--font-body);color:var(--text-primary);cursor:pointer;white-space:nowrap;" style-hover="background:var(--surface-sunken);">{{ opt.label }}</button>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                </div>
+                <div style="background:var(--neutral-100);border-radius:var(--radius-md);display:inline-flex;">
+                  <x-import component-from-global-scope="AquorDesignSystem_fb15e1.Button" variant="secondary" size="sm" onClick="{{ proj.onDelete }}" hint-size="auto,32px">Delete</x-import>
+                </div>
+              </div>
+            </div>
+          </x-import>
+          </div>
+          </sc-if>
+          <sc-if value="{{ isGridView }}" hint-placeholder-val="{{ false }}">
+          <div onClick="{{ proj.onOpen }}" onMouseLeave="{{ proj.onCloseMoveMenu }}" style="transition:transform 0.15s ease, box-shadow 0.15s ease;border-radius:var(--radius-lg);display:flex;flex-direction:column;aspect-ratio:1/1;background:var(--surface-page);border:1px solid var(--border-default);box-shadow:var(--shadow-card);cursor:pointer;" style-hover="transform:translateY(-3px);box-shadow:var(--shadow-raised);">
+            <div style="position:relative;flex:1;min-height:0;background:var(--neutral-100);overflow:hidden;border-top-left-radius:var(--radius-lg);border-top-right-radius:var(--radius-lg);">
+              <sc-if value="{{ proj.hasImage }}" hint-placeholder-val="{{ false }}">
+                <img src="{{ proj.image }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;">
+              </sc-if>
+              <sc-if value="{{ proj.noImage }}" hint-placeholder-val="{{ true }}">
+                <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text-secondary);">No photo</div>
+              </sc-if>
+              <sc-if value="{{ proj.hasBadge }}" hint-placeholder-val="{{ false }}">
+                <span style="position:absolute;top:8px;left:8px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:var(--radius-pill);background:{{ proj.badgeBg }};color:{{ proj.badgeColor }};">{{ proj.badgeLabel }}</span>
+              </sc-if>
+            </div>
+            <div style="padding:10px 12px;display:flex;flex-direction:column;gap:2px;flex-shrink:0;">
+              <div style="font-family:var(--font-display);font-weight:700;font-size:15px;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ proj.name }}</div>
+              <div style="font-size:12px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ proj.launchDateLabel }}<sc-if value="{{ proj.hasCategory }}" hint-placeholder-val="{{ false }}"> · {{ proj.category }}</sc-if></div>
+              <div style="display:flex;gap:6px;margin-top:6px;" onClick="{{ stopPropagation }}">
+                <div style="position:relative;flex-shrink:0;">
+                  <x-import component-from-global-scope="AquorDesignSystem_fb15e1.Button" variant="secondary" size="sm" onClick="{{ proj.onToggleMoveMenu }}" hint-size="auto,32px"><span style="white-space:nowrap;font-size:12px;">Move to ▾</span></x-import>
+                  <sc-if value="{{ proj.moveMenuOpen }}" hint-placeholder-val="{{ false }}">
+                    <div style="position:absolute;left:0;top:36px;background:var(--surface-page);border:1px solid var(--border-default);border-radius:var(--radius-md);box-shadow:0 4px 16px rgba(0,0,0,0.12);min-width:150px;z-index:20;overflow:hidden;">
+                      <sc-for list="{{ proj.moveOptions }}" as="opt" hint-placeholder-count="2">
+                        <button onClick="{{ opt.onClick }}" style="display:block;width:100%;text-align:left;padding:10px 14px;border:none;background:none;font-size:14px;font-family:var(--font-body);color:var(--text-primary);cursor:pointer;white-space:nowrap;" style-hover="background:var(--surface-sunken);">{{ opt.label }}</button>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                </div>
+                <x-import component-from-global-scope="AquorDesignSystem_fb15e1.Button" variant="secondary" size="sm" onClick="{{ proj.onDelete }}" hint-size="auto,32px"><span style="font-size:12px;">Delete</span></x-import>
+              </div>
+            </div>
+          </div>
+          </sc-if>
+        </sc-for>
+      </div>
+    </sc-if>
+    <sc-if value="{{ noProjects }}" hint-placeholder-val="{{ false }}">
+      <x-import component-from-global-scope="AquorDesignSystem_fb15e1.Card" hint-size="100%,auto">
+        <div style="text-align:center;padding:24px;color:var(--text-secondary);font-size:15px;">{{ noProjectsLabel }}</div>
+      </x-import>
+    </sc-if>
+    </sc-if>
+
+    <sc-if value="{{ isTimelineView }}" hint-placeholder-val="{{ false }}">
+      <x-import component-from-global-scope="AquorDesignSystem_fb15e1.Card" style="min-width:0;" hint-size="100%,auto">
+        <sc-if value="{{ ganttData.hasRows }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;">
+            <div style="width:{{ ganttData.nameColWidth }};flex-shrink:0;background:var(--surface-page);">
+              <div style="height:24px;border-bottom:1px solid var(--border-default);"></div>
+              <sc-for list="{{ ganttData.rows }}" as="row" hint-placeholder-count="4">
+                <div onClick="{{ row.onOpen }}" style="height:22px;padding:10px 12px 10px 0;box-sizing:content-box;display:flex;align-items:center;border-bottom:1px solid var(--border-default);font-size:14px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;">{{ row.name }}</div>
+              </sc-for>
+            </div>
+            <div style="flex:1;min-width:0;overflow-x:auto;">
+              <div style="min-width:{{ ganttData.chartWidth }};padding-right:70px;box-sizing:content-box;position:relative;">
+                <sc-if value="{{ ganttData.hasToday }}" hint-placeholder-val="{{ false }}">
+                  <div style="position:absolute;left:{{ ganttData.todayLeft }};top:24px;bottom:0;width:2px;background:var(--status-danger);z-index:5;"></div>
+                </sc-if>
+                <div style="position:relative;height:24px;border-bottom:1px solid var(--border-default);">
+                  <sc-for list="{{ ganttData.ticks }}" as="tick" hint-placeholder-count="4">
+                    <div style="position:absolute;left:{{ tick.leftPct }};top:0;font-size:12px;color:var(--text-secondary);white-space:nowrap;border-left:1px solid var(--border-default);padding-left:6px;">{{ tick.label }}</div>
+                  </sc-for>
+                </div>
+                <sc-for list="{{ ganttData.rows }}" as="row" hint-placeholder-count="4">
+                  <div style="height:22px;padding:10px 0;box-sizing:content-box;position:relative;border-bottom:1px solid var(--border-default);background:var(--surface-sunken);">
+                    <sc-for list="{{ row.segments }}" as="seg" hint-placeholder-count="6">
+                      <div title="{{ seg.title }}" style="position:absolute;left:{{ seg.leftPct }};width:calc({{ seg.widthPct }} + 1px);top:10px;bottom:10px;background:{{ seg.color }};"></div>
+                    </sc-for>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="width:110px;flex-shrink:0;background:var(--surface-page);">
+              <div style="height:24px;border-bottom:1px solid var(--border-default);"></div>
+              <sc-for list="{{ ganttData.rows }}" as="row" hint-placeholder-count="4">
+                <div style="height:22px;padding:10px 0 10px 12px;box-sizing:content-box;display:flex;align-items:center;justify-content:flex-end;border-bottom:1px solid var(--border-default);font-size:13px;color:var(--text-secondary);white-space:nowrap;">{{ row.launchDateLabel }}</div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:16px;padding-top:12px;border-top:1px solid var(--border-default);">
+            <sc-for list="{{ ganttData.legend }}" as="leg" hint-placeholder-count="6">
+              <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary);">
+                <span style="width:10px;height:10px;border-radius:2px;background:{{ leg.color }};display:inline-block;"></span>{{ leg.label }}
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{ ganttData.noRows }}" hint-placeholder-val="{{ false }}">
+          <div style="text-align:center;padding:24px;color:var(--text-secondary);font-size:15px;">No active projects to show.</div>
+        </sc-if>
+      </x-import>
+    </sc-if>
+
+    <x-import component-from-global-scope="AquorDesignSystem_fb15e1.Dialog" open="{{ confirmDeleteOpen }}" onClose="{{ onCancelDelete }}" title="Delete project?" hint-size="440px,200px">
+      <div style="color:var(--text-secondary);font-size:14px;">Delete "{{ confirmDeleteName }}"? You can undo this right after, but it won't be recoverable once you leave the page.</div>
+      <div style="margin-top:16px;display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;">
+        <x-import component-from-global-scope="AquorDesignSystem_fb15e1.Button" variant="secondary" onClick="{{ onCancelDelete }}" hint-size="auto,40px">Cancel</x-import>
+        <x-import component-from-global-scope="AquorDesignSystem_fb15e1.Button" variant="primary" onClick="{{ onConfirmDelete }}" hint-size="auto,40px">Delete</x-import>
+      </div>
+    </x-import>
+  </div>
+  </sc-if>
+  <sc-if value="{{ authNeeded }}" hint-placeholder-val="{{ false }}">
+  <div style="max-width:400px;margin:80px auto;padding:0 24px;">
+    <x-import component-from-global-scope="AquorDesignSystem_fb15e1.Card" hint-size="100%,auto">
+      <div style="font-family:var(--font-display);font-weight:700;font-size:var(--text-h4-size);color:var(--text-primary);margin-bottom:14px;">Sign in</div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <x-import component-from-global-scope="AquorDesignSystem_fb15e1.Input" label="Email" type="email" value="{{ authEmail }}" onChange="{{ onAuthEmailChange }}" hint-size="100%,64px"></x-import>
+        <x-import component-from-global-scope="AquorDesignSystem_fb15e1.Input" label="Password" type="password" value="{{ authPassword }}" onChange="{{ onAuthPasswordChange }}" hint-size="100%,64px"></x-import>
+        <sc-if value="{{ authError }}" hint-placeholder-val="{{ false }}">
+          <div style="color:var(--status-danger);font-size:13px;">{{ authError }}</div>
+        </sc-if>
+        <x-import component-from-global-scope="AquorDesignSystem_fb15e1.Button" variant="primary" onClick="{{ onSignIn }}" hint-size="100%,40px">Sign in</x-import>
+      </div>
+    </x-import>
+  </div>
+  </sc-if>
+</sc-if></div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const PROJECTS_KEY = 'aquor_launch_planner_projects';
+function fmtDate(d) { return d ? new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Not set'; }
+function fmtUpdated(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
+function fmtISO(d) { return d.toISOString().slice(0, 10); }
+function computeStageDates(p) {
+  const s = p.state;
+  if (!s || !s.customStages || !s.amounts || !s.units) return [];
+  const days = (key) => (s.units[key] === 'weeks' ? (s.amounts[key] || 0) * 7 : (s.amounts[key] || 0));
+  const stageComplete = s.stageComplete || {};
+  if (s.planMode === 'backward' && s.goalLaunch) {
+    let cursor = new Date(s.goalLaunch + 'T00:00:00');
+    const rev = [...s.customStages].reverse().map(st => {
+      const end = new Date(cursor);
+      const start = addDays(end, -days(st.key));
+      cursor = start;
+      return { key: st.key, start, end, complete: !!stageComplete[st.key] };
+    });
+    return rev.reverse();
+  }
+  let cursor = new Date((s.projectStart || fmtISO(new Date())) + 'T00:00:00');
+  return s.customStages.map(st => {
+    const start = new Date(cursor);
+    const end = addDays(start, days(st.key));
+    cursor = end;
+    return { key: st.key, start, end, complete: !!stageComplete[st.key] };
+  });
+}
+function stageColor(i) { return 'color-mix(in oklch, var(--water-blue) ' + Math.max(30, 92 - i * 14) + '%, white)'; }
+function diffDays(a, b) { return Math.round((a - b) / 86400000); }
+function dateLabel(d) { return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
+function buildHomeGantt(projects) {
+  const perProject = projects.map(p => ({ p, stages: computeStageDates(p) })).filter(x => x.stages.length);
+  if (!perProject.length) return { rows: [], ticks: [] };
+  const allStarts = perProject.flatMap(x => x.stages.map(s => s.start));
+  const allEnds = perProject.flatMap(x => x.stages.map(s => s.end));
+  const rangeStart = new Date(Math.min(...allStarts.map(d => d.getTime())));
+  const rangeEnd = new Date(Math.max(...allEnds.map(d => d.getTime())));
+  const totalDays = Math.max(1, diffDays(rangeEnd, rangeStart));
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const todayFrac = today >= rangeStart && today <= rangeEnd ? diffDays(today, rangeStart) / totalDays : null;
+  const rows = perProject.map(({ p, stages }) => {
+    const customStages = (p.state && p.state.customStages) || [];
+    const offsets = stages.map(s => diffDays(s.start, rangeStart) / totalDays * 100);
+    offsets.push(diffDays(stages[stages.length - 1].end, rangeStart) / totalDays * 100);
+    const segments = stages.map((s, i) => {
+      const def = customStages.find(cs => cs.key === s.key) || {};
+      return {
+        key: s.key,
+        leftPct: offsets[i].toFixed(3) + '%',
+        widthPct: Math.max(0, offsets[i + 1] - offsets[i]).toFixed(3) + '%',
+        color: s.complete ? 'color-mix(in oklch, var(--status-success) 45%, white)' : stageColor(i),
+        title: (def.label || s.key) + ': ' + dateLabel(s.start) + ' \u2013 ' + dateLabel(s.end),
+      };
+    });
+    return { id: p.id, name: p.name, launchDateLabel: dateLabel(stages[stages.length - 1].end), segments, onOpen: () => { window.location.href = 'planner.html?project=' + encodeURIComponent(p.id); } };
+  });
+  const ticks = [];
+  let cursor = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1);
+  let prevYear = null;
+  while (cursor <= rangeEnd) {
+    const offset = diffDays(cursor, rangeStart);
+    const yr = cursor.getFullYear();
+    const label = cursor.toLocaleDateString('en-US', { month: 'short' }) + (yr !== prevYear ? " '" + String(yr).slice(2) : '');
+    prevYear = yr;
+    ticks.push({ label, pct: Math.max(0, offset / totalDays * 100) });
+    cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+  }
+  const longestName = Math.max(...rows.map(r => r.name.length), 10);
+  const nameColWidth = Math.min(380, Math.max(160, Math.round(longestName * 8.2) + 24));
+  const chartWidth = Math.max(500, ticks.length * 70);
+  return { rows, ticks: ticks.map(t => ({ label: t.label, leftPct: t.pct.toFixed(2) + '%' })), chartWidth, nameColWidth, todayLeft: todayFrac !== null ? (todayFrac * 100).toFixed(2) + '%' : null, legend: (perProject[0].p.state.customStages || []).map((s, i) => ({ label: s.label, color: stageColor(i) })) };
+}
+function badgeForDays(days) {
+  if (days <= -1) return { label: 'Late', bg: 'var(--status-danger)', color: '#fff' };
+  if (days === 0) return { label: 'Deadline Due', bg: '#e8590c', color: '#fff' };
+  if (days >= 1 && days <= 7) return { label: 'Deadline approaching', bg: '#F5A623', color: '#402d00' };
+  return null;
+}
+function soonestDeadlineDays(p) {
+  const stages = computeStageDates(p);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const dayDiff = (d) => Math.round((d - today) / 86400000);
+  if (!stages.length) {
+    const fallback = p.launchDate || p.targetLaunch;
+    return fallback ? dayDiff(new Date(fallback + 'T00:00:00')) : null;
+  }
+  const s = p.state;
+  const candidates = stages.filter(st => !st.complete).map(st => st.end);
+  if (!(s.stageComplete && s.stageComplete.launch)) candidates.push(stages[stages.length - 1].end);
+  return candidates.length ? Math.min(...candidates.map(dayDiff)) : null;
+}
+function projectDeadlineBadge(p) {
+  const days = soonestDeadlineDays(p);
+  return days === null ? null : badgeForDays(days);
+}
+function isProjectLate(p) {
+  const stages = computeStageDates(p);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  if (!stages.length) {
+    const fallback = p.launchDate || p.targetLaunch;
+    return fallback ? new Date(fallback + 'T00:00:00') < today : false;
+  }
+  const s = p.state;
+  const launchLate = !(s.stageComplete && s.stageComplete.launch) && stages[stages.length - 1].end < today;
+  return launchLate || stages.some(st => !st.complete && st.end < today);
+}
+function deriveLaunchDate(p) {
+  if (p.launchDate) return p.launchDate;
+  const s = p.state;
+  if (!s || !s.customStages || !s.amounts || !s.units) return p.targetLaunch || '';
+  const days = (key) => (s.units[key] === 'weeks' ? s.amounts[key] * 7 : s.amounts[key]);
+  if (s.planMode === 'backward' && s.goalLaunch) return s.goalLaunch;
+  let cursor = new Date((s.projectStart || fmtISO(new Date())) + 'T00:00:00');
+  s.customStages.forEach(stage => { cursor = addDays(cursor, days(stage.key) || 0); });
+  return fmtISO(cursor);
+}
+
+function csvField(v) { v = String(v == null ? '' : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+function parseCsv(text) {
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else inQuotes = false; }
+      else field += c;
+    } else if (c === '"') inQuotes = true;
+    else if (c === ',') { row.push(field); field = ''; }
+    else if (c === '\n' || c === '\r') {
+      if (c === '\r' && text[i + 1] === '\n') i++;
+      row.push(field); field = '';
+      if (row.length > 1 || row[0] !== '') rows.push(row);
+      row = [];
+    } else field += c;
+  }
+  if (field !== '' || row.length) { row.push(field); rows.push(row); }
+  return rows;
+}
+
+class Component extends DCLogic {
+  state = {
+    projects: [],
+    loadError: '',
+    showAddForm: false,
+    newName: '',
+    newTargetLaunch: '',
+    sortBy: 'launch',
+    openMoveMenuId: null,
+    importMessage: '',
+    authChecked: false,
+    authUser: null,
+    authEmail: '',
+    authPassword: '',
+    authError: '',
+    lastDeleted: null,
+    confirmDeleteId: null,
+    viewTab: 'active',
+    viewMode: 'list',
+  };
+
+  async componentDidMount() {
+    const { watchAuth } = await import('./firebase-db.js');
+    watchAuth((user) => {
+      this.setState({ authUser: user, authChecked: true });
+      if (user) this.startProjectsListener();
+      else if (this._unsub) { this._unsub(); this._unsub = null; }
+    });
+  }
+  async startProjectsListener() {
+    if (this._unsub) return;
+    const { watchProjects } = await import('./firebase-db.js');
+    this._unsub = watchProjects(
+      (list) => this.setState({ projects: list, loadError: '' }),
+      (err) => this.setState({ loadError: 'Could not load projects: ' + err.message })
+    );
+  }
+  componentWillUnmount() { if (this._unsub) this._unsub(); }
+
+  onAuthEmailChange = (e) => this.setState({ authEmail: e.target.value });
+  onAuthPasswordChange = (e) => this.setState({ authPassword: e.target.value });
+  onSignIn = async () => {
+    try {
+      const { signIn } = await import('./firebase-db.js');
+      await signIn(this.state.authEmail, this.state.authPassword);
+      this.setState({ authError: '', authPassword: '' });
+    } catch (e) {
+      this.setState({ authError: 'Sign-in failed: ' + e.message });
+    }
+  };
+  onSignOut = async () => {
+    const { signOut } = await import('./firebase-db.js');
+    await signOut();
+  };
+
+  importInputRef = React.createRef();
+  onClickImport = () => { if (this.importInputRef.current) this.importInputRef.current.click(); };
+  onImportFileChange = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const rows = parseCsv(String(reader.result || ''));
+      if (!rows.length) { this.setState({ importMessage: 'That CSV had no rows to import.' }); return; }
+      const header = rows[0].map(h => h.trim().toLowerCase());
+      let nameIdx = header.findIndex(h => h.includes('project') && h.includes('name'));
+      if (nameIdx === -1) nameIdx = header.findIndex(h => h.includes('name'));
+      if (nameIdx === -1) nameIdx = 0;
+      let launchIdx = header.findIndex(h => h.includes('launch'));
+      if (launchIdx === -1) launchIdx = 1;
+      const dataRows = rows.slice(1).filter(r => r.some(c => c.trim() !== ''));
+      let created = 0;
+      import('./firebase-db.js').then(({ saveProject }) => {
+        const writes = [];
+        dataRows.forEach(r => {
+          const name = (r[nameIdx] || '').trim();
+          if (!name) return;
+          const rawLaunch = (r[launchIdx] || '').trim();
+          const targetLaunch = /^\d{4}-\d{2}-\d{2}$/.test(rawLaunch) ? rawLaunch : (isNaN(Date.parse(rawLaunch)) ? '' : fmtISO(new Date(rawLaunch)));
+          const id = 'proj_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6) + created;
+          writes.push(saveProject({
+            id, name, targetLaunch, updatedAt: new Date().toISOString(),
+            state: { productName: name, targetLaunch },
+          }));
+          created++;
+        });
+        return Promise.all(writes);
+      }).then(() => {
+        this.setState({ importMessage: created ? ('Imported ' + created + ' project' + (created === 1 ? '' : 's') + ' from CSV.') : 'No valid rows found in that CSV.' });
+      }).catch(err => this.setState({ importMessage: 'Import failed: ' + err.message }));
+      e.target.value = '';
+    };
+    reader.readAsText(file);
+  };
+
+  onSortByChange = (e) => this.setState({ sortBy: e.target.value });
+
+  onToggleAddForm = () => this.setState(st => ({ showAddForm: !st.showAddForm, newName: '', newTargetLaunch: '' }));
+  onNewNameChange = (e) => this.setState({ newName: e.target.value });
+  onNewTargetLaunchChange = (e) => this.setState({ newTargetLaunch: e.target.value });
+
+  onCreateProject = async () => {
+    const id = 'proj_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const name = this.state.newName || 'New Product';
+    const entry = {
+      id, name, targetLaunch: this.state.newTargetLaunch, updatedAt: new Date().toISOString(),
+      state: { productName: name, targetLaunch: this.state.newTargetLaunch },
+    };
+    const { saveProject } = await import('./firebase-db.js');
+    await saveProject(entry);
+    window.location.href = 'planner.html?project=' + encodeURIComponent(id);
+  };
+
+  requestDeleteProject = (id) => this.setState({ confirmDeleteId: id });
+  cancelDeleteProject = () => this.setState({ confirmDeleteId: null });
+  onDeleteProject = async (id) => {
+    const proj = this.state.projects.find(p => p.id === id) || null;
+    const { deleteProject } = await import('./firebase-db.js');
+    await deleteProject(id);
+    this.setState({ lastDeleted: proj, confirmDeleteId: null });
+  };
+  onUndoDelete = async () => {
+    const proj = this.state.lastDeleted;
+    if (!proj) return;
+    const { saveProject } = await import('./firebase-db.js');
+    await saveProject(proj);
+    this.setState({ lastDeleted: null });
+  };
+  onMoveToStatus = async (id, target) => {
+    const proj = this.state.projects.find(p => p.id === id);
+    if (!proj) return;
+    const nextState = { ...(proj.state || {}), isLaunched: target === 'launched' };
+    const { saveProject } = await import('./firebase-db.js');
+    await saveProject({ ...proj, archived: target === 'archived', state: nextState });
+    this.setState({ openMoveMenuId: null });
+  };
+  onToggleMoveMenu = (id) => this.setState(st => ({ openMoveMenuId: st.openMoveMenuId === id ? null : id }));
+  onViewTabChange = (tab) => this.setState({ viewTab: tab });
+  onSetListView = () => this.setState({ viewMode: 'list' });
+  onSetGridView = () => this.setState({ viewMode: 'grid' });
+  onSetTimelineView = () => this.setState({ viewMode: 'timeline' });
+  stopPropagation = (e) => e.stopPropagation();
+
+  renderVals() {
+    const st = this.state;
+    const withLaunch = st.projects.map(p => ({ ...p, _launchDate: deriveLaunchDate(p) }));
+    const tabFiltered = withLaunch.filter(p => {
+      const launched = !!(p.state && p.state.isLaunched);
+      if (st.viewTab === 'archived') return !!p.archived;
+      if (st.viewTab === 'launched') return !p.archived && launched;
+      return !p.archived && !launched;
+    });
+    const sorted = st.sortBy === 'launch'
+      ? tabFiltered.sort((a, b) => (a._launchDate || '9999').localeCompare(b._launchDate || '9999'))
+      : st.sortBy === 'late'
+      ? tabFiltered.sort((a, b) => {
+          const da = soonestDeadlineDays(a), db = soonestDeadlineDays(b);
+          if (da === null && db === null) return 0;
+          if (da === null) return 1;
+          if (db === null) return -1;
+          return da - db;
+        })
+      : st.sortBy === 'category'
+      ? tabFiltered.sort((a, b) => {
+          const ca = (a.state && a.state.category || '').trim(), cb = (b.state && b.state.category || '').trim();
+          if (!ca && !cb) return 0;
+          if (!ca) return 1;
+          if (!cb) return -1;
+          return ca.localeCompare(cb) || a.name.localeCompare(b.name);
+        })
+      : tabFiltered.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+    return {
+      authChecked: st.authChecked,
+      authUser: st.authUser,
+      authNeeded: st.authChecked && !st.authUser,
+      authUserEmail: st.authUser ? st.authUser.email : '',
+      authEmail: st.authEmail,
+      onAuthEmailChange: this.onAuthEmailChange,
+      authPassword: st.authPassword,
+      onAuthPasswordChange: this.onAuthPasswordChange,
+      authError: st.authError,
+      onSignIn: this.onSignIn,
+      onSignOut: this.onSignOut,
+      showAddForm: st.showAddForm,
+      onToggleAddForm: this.onToggleAddForm,
+      newName: st.newName,
+      onNewNameChange: this.onNewNameChange,
+      newTargetLaunch: st.newTargetLaunch,
+      onNewTargetLaunchChange: this.onNewTargetLaunchChange,
+      onCreateProject: this.onCreateProject,
+      sortBy: st.sortBy,
+      onSortByChange: this.onSortByChange,
+      sortOptions: [{ label: 'Launch date', value: 'launch' }, { label: 'Late deadlines', value: 'late' }, { label: 'Category', value: 'category' }],
+      viewTab: st.viewTab,
+      onViewTabChange: this.onViewTabChange,
+      stopPropagation: this.stopPropagation,
+      isListView: st.viewMode === 'list' || !st.viewMode,
+      isGridView: st.viewMode === 'grid',
+      isTimelineView: st.viewMode === 'timeline',
+      isNotTimelineView: st.viewMode !== 'timeline',
+      onSetListView: this.onSetListView,
+      onSetGridView: this.onSetGridView,
+      onSetTimelineView: this.onSetTimelineView,
+      projectsContainerStyle: st.viewMode === 'grid'
+        ? 'display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;'
+        : 'display:flex;flex-direction:column;gap:12px;',
+      viewToggleListStyle: 'padding:6px 14px;border-radius:var(--radius-md) 0 0 var(--radius-md);border:1px solid var(--border-default);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-body);background:' + ((st.viewMode === 'list' || !st.viewMode) ? 'var(--neutral-100)' : 'var(--surface-page)') + ';color:var(--text-primary);',
+      viewToggleGridStyle: 'padding:6px 14px;border-radius:0;border:1px solid var(--border-default);border-left:none;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-body);background:' + (st.viewMode === 'grid' ? 'var(--neutral-100)' : 'var(--surface-page)') + ';color:var(--text-primary);',
+      viewToggleTimelineStyle: 'padding:6px 14px;border-radius:0 var(--radius-md) var(--radius-md) 0;border:1px solid var(--border-default);border-left:none;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-body);background:' + (st.viewMode === 'timeline' ? 'var(--neutral-100)' : 'var(--surface-page)') + ';color:var(--text-primary);',
+      viewTabItems: [
+        { label: 'Active', value: 'active' },
+        { label: 'Launched (' + withLaunch.filter(p => !p.archived && p.state && p.state.isLaunched).length + ')', value: 'launched' },
+        { label: 'Archived (' + withLaunch.filter(p => p.archived).length + ')', value: 'archived' },
+      ].map(t => ({
+        label: t.label,
+        onClick: () => this.onViewTabChange(t.value),
+        style: 'padding:8px 16px;border:none;border-radius:var(--radius-pill);font-family:var(--font-body);font-size:14px;cursor:pointer;'
+          + (t.value === st.viewTab
+            ? 'background:var(--neutral-100);color:var(--text-primary);font-weight:700;'
+            : 'background:transparent;color:var(--text-secondary);font-weight:500;'),
+      })),
+      isArchivedView: st.viewTab === 'archived',
+      importInputRef: this.importInputRef,
+      onClickImport: this.onClickImport,
+      onImportFileChange: this.onImportFileChange,
+      importMessage: st.importMessage,
+      loadError: st.loadError,
+      hasProjects: sorted.length > 0,
+      noProjects: sorted.length === 0,
+      ganttData: (() => {
+        const activeProjects = withLaunch.filter(p => !p.archived && !(p.state && p.state.isLaunched));
+        const g = buildHomeGantt(activeProjects);
+        return { rows: g.rows, hasRows: g.rows.length > 0, noRows: g.rows.length === 0, ticks: g.ticks, chartWidth: g.chartWidth ? g.chartWidth + 'px' : '500px', nameColWidth: (g.nameColWidth || 220) + 'px', todayLeft: g.todayLeft, hasToday: !!g.todayLeft, legend: g.legend || [] };
+      })(),
+      noProjectsLabel: st.viewTab === 'archived' ? 'No archived projects.' : st.viewTab === 'launched' ? 'No launched projects yet.' : 'No projects yet — click "+ Add project" to start one.',
+      projectRows: sorted.map(p => {
+        const badge = projectDeadlineBadge(p);
+        return {
+        id: p.id, name: p.name,
+        category: (p.state && p.state.category) || '',
+        hasCategory: !!(p.state && p.state.category),
+        image: (p.state && p.state.productImage) || '',
+        hasImage: !!(p.state && p.state.productImage),
+        noImage: !(p.state && p.state.productImage),
+        launchDateLabel: fmtDate(p._launchDate),
+        hasBadge: !!badge, badgeLabel: badge ? badge.label : '', badgeBg: badge ? badge.bg : '', badgeColor: badge ? badge.color : '',
+        updatedLabel: fmtUpdated(p.updatedAt),
+        onOpen: () => { window.location.href = 'planner.html?project=' + encodeURIComponent(p.id); },
+        onDelete: () => this.requestDeleteProject(p.id),
+        currentStatus: p.archived ? 'archived' : ((p.state && p.state.isLaunched) ? 'launched' : 'active'),
+        moveMenuOpen: st.openMoveMenuId === p.id,
+        onToggleMoveMenu: () => this.onToggleMoveMenu(p.id),
+        onCloseMoveMenu: () => { if (this.state.openMoveMenuId === p.id) this.setState({ openMoveMenuId: null }); },
+        moveOptions: [
+          { key: 'active', label: 'Active' },
+          { key: 'launched', label: 'Launched' },
+          { key: 'archived', label: 'Archived' },
+        ].filter(o => o.key !== (p.archived ? 'archived' : ((p.state && p.state.isLaunched) ? 'launched' : 'active')))
+          .map(o => ({ label: o.label, onClick: () => this.onMoveToStatus(p.id, o.key) })),
+      };}),
+      onUndoDelete: this.onUndoDelete,
+      undoDeleteDisabled: !st.lastDeleted,
+      confirmDeleteOpen: !!st.confirmDeleteId,
+      confirmDeleteName: (st.projects.find(p => p.id === st.confirmDeleteId) || {}).name || 'this project',
+      onCancelDelete: this.cancelDeleteProject,
+      onConfirmDelete: () => this.onDeleteProject(st.confirmDeleteId),
+    };
+  }
+}
+
+</script>
+</body>
+</html>
