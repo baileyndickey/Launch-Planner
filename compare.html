@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="aquor-ds/tokens/colors.css">
+  <link rel="stylesheet" href="aquor-ds/tokens/typography.css">
+  <link rel="stylesheet" href="aquor-ds/tokens/spacing.css">
+  <link rel="stylesheet" href="aquor-ds/tokens/base.css">
+  <link rel="stylesheet" href="aquor-ds/styles.css">
+  <script src="aquor-ds/_ds_bundle.js"></script>
+  <style>
+    body{margin:0;background:var(--surface-sunken);font-family:var(--font-body);}
+    a{color:var(--text-link);}
+    a:hover{color:var(--text-link-hover);}
+    @media print{
+      body *{visibility:hidden;}
+      #compare-print-area, #compare-print-area *{visibility:visible;}
+      #compare-print-area{position:absolute;left:0;top:0;width:100%;}
+    }
+  </style>
+</helmet>
+<div style="min-height:100vh;background:var(--surface-sunken);">
+  <div style="background:var(--surface-page);border-bottom:1px solid var(--border-default);">
+    <div style="max-width:1200px;margin:0 auto;padding:24px 32px;display:flex;align-items:center;gap:12px;">
+      <img src="aquor-ds/aquor-logo-primary.png" alt="Aquor" style="height:28px;width:auto;display:block;">
+      <div style="width:1px;height:24px;background:var(--border-default);"></div>
+      <div style="font-family:var(--font-display);font-weight:600;font-size:20px;color:var(--text-primary);">Launch Planner</div>
+    </div>
+  </div>
+
+  <div style="max-width:1200px;margin:0 auto;padding:32px;display:flex;flex-direction:column;gap:20px;box-sizing:border-box;">
+    <div style="display:flex;flex-direction:column;gap:6px;">
+      <a href="index.html" style="font-size:14px;font-weight:600;text-decoration:none;">← All projects</a>
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;">
+        <div>
+          <div style="font-family:var(--font-display);font-weight:700;font-size:var(--text-h2-size);color:var(--text-primary);">Compare timelines</div>
+          <div style="font-size:14px;color:var(--text-secondary);margin-top:4px;">{{ subtitle }}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <div style="display:flex;">
+            <button onClick="{{ onViewVisual }}" style="{{ viewVisualStyle }}">Visual timeline</button>
+            <button onClick="{{ onViewDates }}" style="{{ viewDatesStyle }}">Dates chart</button>
+          </div>
+          <x-import component-from-global-scope="AquorDesignSystem_fb15e1.Button" variant="secondary" size="sm" onClick="{{ onExportPdf }}" hint-size="auto,32px"><span style="white-space:nowrap;">Export as PDF</span></x-import>
+        </div>
+      </div>
+    </div>
+
+    <sc-if value="{{ needsAuth }}" hint-placeholder-val="{{ false }}">
+      <x-import component-from-global-scope="AquorDesignSystem_fb15e1.Card" hint-size="100%,auto">
+        <div style="text-align:center;padding:24px;color:var(--text-secondary);font-size:15px;">You're signed out. <a href="index.html">Sign in on the home page</a> to compare projects.</div>
+      </x-import>
+    </sc-if>
+
+    <sc-if value="{{ showEmpty }}" hint-placeholder-val="{{ false }}">
+      <x-import component-from-global-scope="AquorDesignSystem_fb15e1.Card" hint-size="100%,auto">
+        <div style="text-align:center;padding:24px;color:var(--text-secondary);font-size:15px;">No projects selected. <a href="index.html">Go back</a>, click Compare, and pick two or more.</div>
+      </x-import>
+    </sc-if>
+
+    <sc-if value="{{ hasItems }}" hint-placeholder-val="{{ true }}">
+    <div id="compare-print-area" style="display:flex;flex-direction:column;gap:20px;">
+      <sc-if value="{{ isDates }}" hint-placeholder-val="{{ false }}">
+        <div style="background:var(--surface-page);border:1px solid var(--border-default);border-radius:var(--radius-lg);box-shadow:var(--shadow-card);overflow:hidden;">
+          <div style="overflow-x:auto;">
+            <div style="min-width:{{ datesMinWidth }};">
+              <div style="display:grid;grid-template-columns:{{ datesCols }};background:var(--surface-sunken);border-bottom:1px solid var(--border-default);">
+                <div style="position:sticky;left:0;z-index:2;background:var(--surface-sunken);padding:12px 16px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-secondary);display:flex;align-items:flex-end;">Stage</div>
+                <sc-for list="{{ datesHeads }}" as="h" hint-placeholder-count="2">
+                  <div style="padding:12px 16px;display:flex;flex-direction:column;gap:2px;min-width:0;">
+                    <div style="display:flex;align-items:center;gap:6px;min-width:0;">
+                      <a href="{{ h.href }}" style="font-family:var(--font-display);font-weight:700;font-size:14px;color:var(--text-primary);text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ h.name }}</a>
+                      <button onClick="{{ h.onRemove }}" title="Remove from comparison" aria-label="Remove from comparison" style="margin-left:auto;flex-shrink:0;width:22px;height:22px;border:none;background:none;border-radius:var(--radius-sm);color:var(--text-secondary);cursor:pointer;font-size:15px;line-height:1;padding:0;" style-hover="background:var(--neutral-100);color:var(--text-primary);">×</button>
+                    </div>
+                    <sc-if value="{{ h.pushed }}" hint-placeholder-val="{{ false }}">
+                      <span title="{{ h.pushedTitle }}" style="align-self:flex-start;font-size:11px;font-weight:700;padding:1px 7px;border-radius:var(--radius-pill);background:#F5A623;color:#402d00;white-space:nowrap;">⚑ Launch pushed</span>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+              <sc-for list="{{ datesRows }}" as="dr" hint-placeholder-count="6">
+                <div style="display:grid;grid-template-columns:{{ datesCols }};border-bottom:1px solid var(--border-default);background:{{ dr.bg }};">
+                  <div style="position:sticky;left:0;z-index:2;background:{{ dr.bg }};padding:10px 16px;font-size:13px;color:var(--text-primary);font-weight:{{ dr.weight }};display:flex;align-items:center;">{{ dr.label }}</div>
+                  <sc-for list="{{ dr.cells }}" as="c" hint-placeholder-count="2">
+                    <div style="padding:10px 16px;display:flex;flex-direction:column;gap:2px;min-width:0;">
+                      <span style="font-size:13px;color:var(--text-primary);white-space:nowrap;font-weight:{{ dr.weight }};">{{ c.main }}</span>
+                      <span style="font-size:12px;color:{{ c.subColor }};white-space:nowrap;font-weight:{{ c.subWeight }};">{{ c.sub }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="padding:10px 16px;font-size:12px;color:var(--text-secondary);">Stages are matched by name. Dates include actual start/end dates you've logged.</div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ isVisual }}" hint-placeholder-val="{{ true }}">
+      <div style="background:var(--surface-page);border:1px solid var(--border-default);border-radius:var(--radius-lg);box-shadow:var(--shadow-card);overflow:hidden;">
+        <div style="overflow-x:auto;">
+          <div style="min-width:{{ chartMinWidth }};">
+            <div style="display:grid;grid-template-columns:240px minmax(0,1fr) 110px;border-bottom:1px solid var(--border-default);">
+              <div style="position:sticky;left:0;z-index:3;background:var(--surface-page);padding:8px 16px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-secondary);">Stage</div>
+              <div style="position:relative;height:32px;">
+                <sc-for list="{{ ticks }}" as="tick" hint-placeholder-count="6">
+                  <div style="position:absolute;left:{{ tick.leftPct }};top:0;bottom:0;display:flex;align-items:center;font-size:12px;color:var(--text-secondary);white-space:nowrap;border-left:1px solid var(--border-default);padding-left:6px;">{{ tick.label }}</div>
+                </sc-for>
+              </div>
+              <div style="position:sticky;right:0;z-index:3;background:var(--surface-page);padding:8px 16px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-secondary);text-align:right;">Length</div>
+            </div>
+            <sc-for list="{{ rows }}" as="row" hint-placeholder-count="8">
+              <sc-if value="{{ row.isGroup }}" hint-placeholder-val="{{ false }}">
+                <div style="display:grid;grid-template-columns:240px minmax(0,1fr) 110px;border-top:1px solid var(--border-default);background:var(--surface-sunken);">
+                  <div style="position:sticky;left:0;z-index:3;background:var(--surface-sunken);padding:12px 16px;display:flex;flex-direction:column;gap:3px;min-width:0;">
+                    <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+                      <a href="{{ row.href }}" title="Open planner" style="font-family:var(--font-display);font-weight:700;font-size:15px;color:var(--text-primary);text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ row.name }}</a>
+                      <button onClick="{{ row.onRemove }}" title="Remove from comparison" aria-label="Remove from comparison" style="margin-left:auto;flex-shrink:0;width:22px;height:22px;border:none;background:none;border-radius:var(--radius-sm);color:var(--text-secondary);cursor:pointer;font-size:15px;line-height:1;padding:0;" style-hover="background:var(--neutral-100);color:var(--text-primary);">×</button>
+                    </div>
+                    <div style="font-size:12px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ row.parentLabel }}Launch {{ row.launchLabel }}</div>
+                    <sc-if value="{{ row.pushed }}" hint-placeholder-val="{{ false }}">
+                      <span title="{{ row.pushedTitle }}" style="align-self:flex-start;font-size:11px;font-weight:700;padding:1px 7px;border-radius:var(--radius-pill);background:#F5A623;color:#402d00;white-space:nowrap;">⚑ Launch pushed by sub-stage</span>
+                    </sc-if>
+                  </div>
+                  <div style="position:relative;">
+                    <sc-if value="{{ hasToday }}" hint-placeholder-val="{{ false }}">
+                      <div style="position:absolute;left:{{ todayLeft }};top:0;bottom:0;width:2px;background:var(--status-danger);z-index:2;"></div>
+                    </sc-if>
+                    <sc-if value="{{ row.hasSpan }}" hint-placeholder-val="{{ true }}">
+                      <div title="{{ row.spanTitle }}" style="position:absolute;left:{{ row.leftPct }};width:{{ row.widthPct }};top:50%;height:4px;margin-top:-2px;border-radius:2px;background:color-mix(in oklch, var(--text-primary) 40%, white);"></div>
+                      <div style="position:absolute;left:{{ row.endPct }};top:50%;width:10px;height:10px;margin:-5px 0 0 -5px;transform:rotate(45deg);background:var(--text-primary);"></div>
+                    </sc-if>
+                  </div>
+                  <div style="position:sticky;right:0;z-index:3;background:var(--surface-sunken);padding:12px 16px;display:flex;align-items:center;justify-content:flex-end;font-size:13px;font-weight:700;color:var(--text-primary);white-space:nowrap;">{{ row.durLabel }}</div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ row.isStage }}" hint-placeholder-val="{{ true }}">
+                <div style="display:grid;grid-template-columns:240px minmax(0,1fr) 110px;border-top:1px solid var(--border-default);">
+                  <div style="position:sticky;left:0;z-index:3;background:var(--surface-page);padding:0 16px 0 28px;height:36px;display:flex;align-items:center;font-size:13px;color:var(--text-primary);min-width:0;"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ row.label }}</span></div>
+                  <div style="position:relative;height:36px;">
+                    <sc-if value="{{ hasToday }}" hint-placeholder-val="{{ false }}">
+                      <div style="position:absolute;left:{{ todayLeft }};top:0;bottom:0;width:2px;background:var(--status-danger);z-index:2;"></div>
+                    </sc-if>
+                    <div title="{{ row.title }}" style="position:absolute;left:{{ row.leftPct }};width:calc({{ row.widthPct }} + 1px);top:8px;bottom:8px;border-radius:3px;background:{{ row.color }};"></div>
+                  </div>
+                  <div style="position:sticky;right:0;z-index:3;background:var(--surface-page);padding:0 16px;height:36px;display:flex;align-items:center;justify-content:flex-end;font-size:13px;color:var(--text-secondary);white-space:nowrap;">{{ row.durLabel }}</div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ row.isEmpty }}" hint-placeholder-val="{{ false }}">
+                <div style="border-top:1px solid var(--border-default);padding:10px 16px 10px 28px;font-size:13px;color:var(--text-secondary);">No stages planned yet.</div>
+              </sc-if>
+            </sc-for>
+          </div>
+        </div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;padding:12px 16px;border-top:1px solid var(--border-default);">
+          <sc-for list="{{ legend }}" as="leg" hint-placeholder-count="4">
+            <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary);">
+              <span style="width:10px;height:10px;border-radius:2px;background:{{ leg.color }};display:inline-block;"></span>{{ leg.label }}
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ showTable }}" hint-placeholder-val="{{ true }}">
+        <div style="background:var(--surface-page);border:1px solid var(--border-default);border-radius:var(--radius-lg);box-shadow:var(--shadow-card);overflow:hidden;">
+          <div style="padding:14px 16px;border-bottom:1px solid var(--border-default);font-family:var(--font-display);font-weight:700;font-size:var(--text-h4-size);color:var(--text-primary);">Stage lengths</div>
+          <div style="overflow-x:auto;">
+            <div style="min-width:{{ tableMinWidth }};">
+              <div style="display:grid;grid-template-columns:{{ tableCols }};background:var(--surface-sunken);border-bottom:1px solid var(--border-default);">
+                <div style="padding:10px 16px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-secondary);">Stage</div>
+                <sc-for list="{{ tableHeads }}" as="h" hint-placeholder-count="2">
+                  <div style="padding:10px 16px;font-size:13px;font-weight:700;color:var(--text-primary);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ h.name }}</div>
+                </sc-for>
+              </div>
+              <sc-for list="{{ tableRows }}" as="tr" hint-placeholder-count="5">
+                <div style="display:grid;grid-template-columns:{{ tableCols }};border-bottom:1px solid var(--border-default);background:{{ tr.bg }};">
+                  <div style="padding:10px 16px;font-size:13px;color:var(--text-primary);font-weight:{{ tr.weight }};">{{ tr.label }}</div>
+                  <sc-for list="{{ tr.cells }}" as="c" hint-placeholder-count="2">
+                    <div style="padding:10px 16px;font-size:13px;text-align:right;white-space:nowrap;color:{{ c.color }};font-weight:{{ tr.weight }};">{{ c.text }}</div>
+                  </sc-for>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="padding:10px 16px;font-size:12px;color:var(--text-secondary);">Longest length in each row is highlighted. Stages are matched by name.</div>
+        </div>
+      </sc-if>
+    </div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;defaultAlign&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;calendar&quot;,&quot;start&quot;],&quot;default&quot;:&quot;calendar&quot;,&quot;tsType&quot;:&quot;'calendar' | 'start'&quot;},&quot;showLengthTable&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
+function fmtISO(d) { return d.toISOString().slice(0, 10); }
+function diffDays(a, b) { return Math.round((a - b) / 86400000); }
+function dateLabel(d) { return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
+function fmtDate(s) { return s ? dateLabel(new Date(s + 'T00:00:00')) : 'Not set'; }
+function fmtDur(days) { if (days >= 14 && days % 7 === 0) return (days / 7) + ' wks'; if (days >= 14) return (days / 7).toFixed(1) + ' wks'; return days + (days === 1 ? ' day' : ' days'); }
+function stageColor(i) { return 'color-mix(in oklch, var(--water-blue) ' + Math.max(30, 92 - i * 14) + '%, white)'; }
+const DONE_COLOR = 'color-mix(in oklch, var(--status-success) 45%, white)';
+const LATE_COLOR = 'color-mix(in oklch, var(--status-danger) 40%, white)';
+function stageDone(s, key) { const pr = ((s && s.stageProgress) || {})[key] || {}; return !!(((s && s.stageComplete) || {})[key] || pr.ended); }
+function rawStageDates(p) {
+  const s = p.state;
+  if (!s || !s.customStages || !s.amounts || !s.units) return [];
+  const days = (key) => (s.units[key] === 'weeks' ? (s.amounts[key] || 0) * 7 : (s.amounts[key] || 0));
+  const sc = s.stageComplete || {};
+  if (s.planMode === 'backward' && s.goalLaunch) {
+    let cursor = new Date(s.goalLaunch + 'T00:00:00');
+    return [...s.customStages].reverse().map(st => { const end = new Date(cursor); const start = addDays(end, -days(st.key)); cursor = start; return { key: st.key, start, end, complete: !!sc[st.key] }; }).reverse();
+  }
+  let cursor = new Date((s.projectStart || fmtISO(new Date())) + 'T00:00:00');
+  return s.customStages.map(st => { const start = new Date(cursor); const end = addDays(start, days(st.key)); cursor = end; return { key: st.key, start, end, complete: !!sc[st.key] }; });
+}
+function applyActuals(s, planned) {
+  if (!s) return planned;
+  const ovs = s.stageDateOverrides || {}, prog = s.stageProgress || {};
+  let shift = 0;
+  return planned.map(st => {
+    const ov = ovs[st.key];
+    let start = st.start, end = st.end;
+    if (ov && ov.start && ov.end) { start = new Date(ov.start + 'T00:00:00'); end = new Date(ov.end + 'T00:00:00'); if (!ov.fromCalc) shift = 0; }
+    start = addDays(start, shift); end = addDays(end, shift);
+    const pr = prog[st.key] || {};
+    if (pr.started && pr.startedDate) { const a = new Date(pr.startedDate + 'T00:00:00'); const d = diffDays(a, start); start = a; end = addDays(end, d); shift += d; }
+    if (pr.ended && pr.endedDate) { const a = new Date(pr.endedDate + 'T00:00:00'); shift += diffDays(a, end); end = a; }
+    return { ...st, start, end, complete: stageDone(s, st.key) };
+  });
+}
+function computeStageDates(p) {
+  const s = p.state;
+  if (Array.isArray(p.schedule) && p.schedule.length) return p.schedule.map(x => ({ key: x.key, start: new Date(x.start + 'T00:00:00'), end: new Date(x.end + 'T00:00:00'), complete: stageDone(s, x.key) || !!x.done }));
+  return applyActuals(s, rawStageDates(p));
+}
+function deriveLaunchDate(p) {
+  if (p.launchDate) return p.launchDate;
+  const s = p.state;
+  if (!s || !s.customStages || !s.amounts || !s.units) return p.targetLaunch || '';
+  if (s.planMode === 'backward' && s.goalLaunch) return s.goalLaunch;
+  const days = (key) => (s.units[key] === 'weeks' ? s.amounts[key] * 7 : s.amounts[key]);
+  let cursor = new Date((s.projectStart || fmtISO(new Date())) + 'T00:00:00');
+  s.customStages.forEach(stage => { cursor = addDays(cursor, days(stage.key) || 0); });
+  return fmtISO(cursor);
+}
+
+class Component extends DCLogic {
+  state = {
+    ids: (new URLSearchParams(window.location.search).get('ids') || '').split(',').map(decodeURIComponent).filter(Boolean),
+    projects: [], loaded: false, authChecked: false, authUser: null, align: null, view: 'visual',
+  };
+  async componentDidMount() {
+    const { watchAuth, watchProjects } = await import('./firebase-db.js');
+    watchAuth((user) => {
+      this.setState({ authUser: user, authChecked: true });
+      if (user && !this._unsub) this._unsub = watchProjects((list) => this.setState({ projects: list, loaded: true }), () => this.setState({ loaded: true }));
+    });
+  }
+  componentWillUnmount() { if (this._unsub) this._unsub(); }
+  removeId = (id) => {
+    const ids = this.state.ids.filter(x => x !== id);
+    window.history.replaceState(null, '', window.location.pathname + (ids.length ? '?ids=' + ids.map(encodeURIComponent).join(',') : ''));
+    this.setState({ ids });
+  };
+  alignBtn(active, pos) {
+    const r = pos === 'l' ? 'var(--radius-md) 0 0 var(--radius-md)' : '0 var(--radius-md) var(--radius-md) 0';
+    return 'padding:6px 14px;border-radius:' + r + ';border:1px solid var(--border-default);' + (pos === 'r' ? 'border-left:none;' : '') + 'font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-body);color:var(--text-primary);background:' + (active ? 'var(--neutral-100)' : 'var(--surface-page)') + ';';
+  }
+
+  renderVals() {
+    const st = this.state;
+    const align = st.align || this.props.defaultAlign || 'calendar';
+    const aligned = align === 'start';
+    const all = st.projects;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const items = st.ids.map(id => all.find(p => p.id === id)).filter(Boolean).map(p => {
+      const stages = computeStageDates(p);
+      const defs = (p.state && p.state.customStages) || [];
+      const own = stages.length ? fmtISO(stages[stages.length - 1].end) : deriveLaunchDate(p);
+      const pusher = all.filter(k => k.parentId === p.id && k.influencesLaunch !== false)
+        .map(k => ({ k, d: deriveLaunchDate(k) })).filter(x => x.d && (!own || x.d > own))
+        .sort((a, b) => b.d.localeCompare(a.d))[0];
+      const parent = p.parentId ? all.find(x => x.id === p.parentId) : null;
+      const minStart = stages.length ? new Date(Math.min(...stages.map(s => s.start.getTime()))) : null;
+      const maxEnd = stages.length ? new Date(Math.max(...stages.map(s => s.end.getTime()))) : null;
+      return { p, stages, defs, own, launch: pusher ? pusher.d : own, pusher, parent, minStart, maxEnd };
+    });
+    const withStages = items.filter(x => x.stages.length);
+    let rangeStart = null, totalDays = 1;
+    if (withStages.length) {
+      if (aligned) {
+        totalDays = Math.max(1, ...withStages.map(x => diffDays(x.maxEnd, x.minStart)));
+      } else {
+        rangeStart = new Date(Math.min(...withStages.map(x => x.minStart.getTime())));
+        const rangeEnd = new Date(Math.max(...withStages.map(x => x.maxEnd.getTime())));
+        totalDays = Math.max(1, diffDays(rangeEnd, rangeStart));
+      }
+    }
+    const pct = (d, origin) => (diffDays(d, origin) / totalDays * 100);
+    const rows = [];
+    items.forEach(x => {
+      const { p, stages, defs } = x;
+      const origin = aligned && stages.length ? x.minStart : rangeStart;
+      const first = { start: x.minStart }, last = { end: x.maxEnd };
+      const total = stages.length ? diffDays(x.maxEnd, x.minStart) : 0;
+      rows.push({
+        isGroup: true, isStage: false, isEmpty: false, key: 'g' + p.id, name: p.name,
+        href: 'planner.html?project=' + encodeURIComponent(p.id),
+        parentLabel: x.parent ? 'Sub-stage of ' + x.parent.name + ' · ' : '',
+        launchLabel: fmtDate(x.launch) + (x.pusher ? ' ⚑' : ''),
+        pushed: !!x.pusher, pushedTitle: x.pusher ? 'Pushed by "' + x.pusher.k.name + '" (own plan: ' + fmtDate(x.own) + ')' : '',
+        hasSpan: stages.length > 0,
+        leftPct: stages.length ? pct(first.start, origin).toFixed(3) + '%' : '0%',
+        widthPct: stages.length ? (total / totalDays * 100).toFixed(3) + '%' : '0%',
+        endPct: stages.length ? pct(last.end, origin).toFixed(3) + '%' : '0%',
+        spanTitle: stages.length ? dateLabel(first.start) + ' – ' + dateLabel(last.end) : '',
+        durLabel: stages.length ? fmtDur(total) : '—',
+        onRemove: () => this.removeId(p.id),
+      });
+      if (!stages.length) rows.push({ isGroup: false, isStage: false, isEmpty: true, key: 'e' + p.id });
+      stages.forEach((s, i) => {
+        const def = defs.find(d => d.key === s.key) || {};
+        const late = !s.complete && s.end < today;
+        const len = diffDays(s.end, s.start);
+        rows.push({
+          isGroup: false, isStage: true, isEmpty: false, key: p.id + s.key, label: def.label || s.key,
+          leftPct: pct(s.start, origin).toFixed(3) + '%', widthPct: Math.max(0, len / totalDays * 100).toFixed(3) + '%',
+          color: s.complete ? DONE_COLOR : late ? LATE_COLOR : stageColor(i),
+          title: (def.label || s.key) + ': ' + dateLabel(s.start) + ' – ' + dateLabel(s.end) + (late ? ' (late)' : s.complete ? ' (complete)' : ''),
+          durLabel: fmtDur(len),
+        });
+      });
+    });
+
+    const ticks = [];
+    if (withStages.length && !aligned) {
+      const rangeEnd = addDays(rangeStart, totalDays);
+      let c = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1), prevYear = null;
+      while (c <= rangeEnd) {
+        const yr = c.getFullYear();
+        ticks.push({ label: c.toLocaleDateString('en-US', { month: 'short' }) + (yr !== prevYear ? " '" + String(yr).slice(2) : ''), leftPct: Math.max(0, pct(c, rangeStart)).toFixed(2) + '%' });
+        prevYear = yr;
+        c = new Date(c.getFullYear(), c.getMonth() + 1, 1);
+      }
+    } else if (withStages.length) {
+      const step = totalDays <= 70 ? 7 : totalDays <= 200 ? 14 : 28;
+      for (let d = 0; d <= totalDays; d += step) ticks.push({ label: d === 0 ? 'Start' : 'Wk ' + (d / 7), leftPct: (d / totalDays * 100).toFixed(2) + '%' });
+    }
+    const todayFrac = !aligned && rangeStart && today >= rangeStart && diffDays(today, rangeStart) <= totalDays ? diffDays(today, rangeStart) / totalDays : null;
+
+    const labelOrder = [];
+    const lenBy = withStages.map(x => {
+      const m = {};
+      x.stages.forEach(s => { const lbl = ((x.defs.find(d => d.key === s.key) || {}).label || s.key).trim(); if (!labelOrder.includes(lbl)) labelOrder.push(lbl); m[lbl] = (m[lbl] || 0) + diffDays(s.end, s.start); });
+      return m;
+    });
+    const mkCells = (vals, fmt) => { const mx = Math.max(...vals.filter(v => v != null)); return vals.map(v => ({ text: v == null ? '—' : fmt(v), color: v != null && vals.filter(q => q != null).length > 1 && v === mx ? 'var(--status-danger)' : 'var(--text-primary)' })); };
+    const tableRows = labelOrder.map(lbl => ({ label: lbl, weight: 400, bg: 'var(--surface-page)', cells: mkCells(lenBy.map(m => m[lbl] ?? null), fmtDur) }));
+    tableRows.push({ label: 'Total', weight: 700, bg: 'var(--surface-sunken)', cells: mkCells(withStages.map(x => diffDays(x.maxEnd, x.minStart)), fmtDur) });
+    tableRows.push({ label: 'Launch', weight: 700, bg: 'var(--surface-sunken)', cells: withStages.map(x => ({ text: fmtDate(x.launch), color: 'var(--text-primary)' })) });
+
+    const dateLabelsOrder = [];
+    const byLabel = items.map(x => {
+      const m = {};
+      x.stages.forEach(s => {
+        const lbl = ((x.defs.find(d => d.key === s.key) || {}).label || s.key).trim();
+        if (!dateLabelsOrder.includes(lbl)) dateLabelsOrder.push(lbl);
+        const e = m[lbl];
+        m[lbl] = e ? { start: s.start < e.start ? s.start : e.start, end: s.end > e.end ? s.end : e.end, complete: e.complete && s.complete } : { start: s.start, end: s.end, complete: s.complete };
+      });
+      return m;
+    });
+    const short = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const datesRows = dateLabelsOrder.map(lbl => ({
+      label: lbl, weight: 400, bg: 'var(--surface-page)',
+      cells: byLabel.map(m => {
+        const v = m[lbl];
+        if (!v) return { main: '—', sub: '', subColor: 'var(--text-secondary)', subWeight: 400 };
+        const late = !v.complete && v.end < today;
+        const range = (v.start.getFullYear() === v.end.getFullYear() ? short(v.start) : dateLabel(v.start)) + ' – ' + dateLabel(v.end);
+        return { main: range, sub: fmtDur(diffDays(v.end, v.start)) + (v.complete ? ' · Complete' : late ? ' · Late' : ''), subColor: v.complete ? 'var(--status-success)' : late ? 'var(--status-danger)' : 'var(--text-secondary)', subWeight: v.complete || late ? 700 : 400 };
+      }),
+    }));
+    datesRows.unshift({ label: 'Project start', weight: 700, bg: 'var(--surface-sunken)', cells: items.map(x => ({ main: x.minStart ? dateLabel(x.minStart) : '—', sub: '', subColor: 'var(--text-secondary)', subWeight: 400 })) });
+    datesRows.push({ label: 'Launch', weight: 700, bg: 'var(--surface-sunken)', cells: items.map(x => ({ main: fmtDate(x.launch) + (x.pusher ? ' ⚑' : ''), sub: x.minStart ? fmtDur(diffDays(x.maxEnd, x.minStart)) + ' total' : '', subColor: 'var(--text-secondary)', subWeight: 400 })) });
+
+    const legendCount = Math.max(0, ...withStages.map(x => x.stages.length));
+    const legend = Array.from({ length: Math.min(legendCount, 6) }, (_, i) => ({ label: 'Stage ' + (i + 1), color: stageColor(i) }));
+    legend.push({ label: 'Complete', color: DONE_COLOR }, { label: 'Late', color: LATE_COLOR });
+    if (!aligned) legend.push({ label: 'Today', color: 'var(--status-danger)' });
+
+    const n = items.length;
+    return {
+      subtitle: !st.loaded ? 'Loading…' : n + ' project' + (n === 1 ? '' : 's') + (st.view === 'dates' ? ' · dates chart' : aligned ? ' · aligned to each start date' : ' · on a shared calendar'),
+      needsAuth: st.authChecked && !st.authUser,
+      showEmpty: st.loaded && n === 0,
+      hasItems: n > 0,
+      isVisual: st.view !== 'dates',
+      isDates: st.view === 'dates',
+      onViewVisual: () => this.setState({ view: 'visual' }),
+      onViewDates: () => this.setState({ view: 'dates' }),
+      viewVisualStyle: this.alignBtn(st.view !== 'dates', 'l'),
+      viewDatesStyle: this.alignBtn(st.view === 'dates', 'r'),
+      datesHeads: items.map(x => ({ name: x.p.name, href: 'planner.html?project=' + encodeURIComponent(x.p.id), onRemove: () => this.removeId(x.p.id), pushed: !!x.pusher, pushedTitle: x.pusher ? 'Pushed by "' + x.pusher.k.name + '" (own plan: ' + fmtDate(x.own) + ')' : '' })),
+      datesCols: 'minmax(170px,1fr) repeat(' + items.length + ', minmax(190px,1.2fr))',
+      datesMinWidth: (170 + items.length * 190) + 'px',
+      datesRows,
+      onExportPdf: () => window.print(),
+      rows, ticks, legend,
+      chartMinWidth: (350 + Math.max(600, ticks.length * 72)) + 'px',
+      hasToday: todayFrac !== null,
+      todayLeft: todayFrac !== null ? (todayFrac * 100).toFixed(2) + '%' : '0%',
+      showTable: st.view !== 'dates' && this.props.showLengthTable !== false && withStages.length > 1,
+      tableHeads: withStages.map(x => ({ name: x.p.name })),
+      tableCols: 'minmax(180px,1.4fr) repeat(' + withStages.length + ', minmax(130px,1fr))',
+      tableMinWidth: (180 + withStages.length * 130) + 'px',
+      tableRows,
+    };
+  }
+}
+</script>
+</body>
+</html>
