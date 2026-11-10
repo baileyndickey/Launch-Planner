@@ -66,6 +66,41 @@
 
     <sc-if value="{{ hasItems }}" hint-placeholder-val="{{ true }}">
     <div id="compare-print-area" style="display:flex;flex-direction:column;gap:20px;">
+    <div style="background:var(--surface-page);border:1px solid var(--border-default);border-radius:var(--radius-lg);box-shadow:var(--shadow-card);overflow:hidden;">
+        <div style="padding:16px 20px;display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--border-default);">
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <span style="font-family:var(--font-display);font-weight:700;font-size:var(--text-h4-size);color:var(--text-primary);">Launch status</span>
+            <span style="font-size:13px;color:var(--text-secondary);">{{ snapDateLabel }}</span>
+          </div>
+          <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--text-secondary);">
+            <span style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--water-blue);"></span>Done</span>
+            <span style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:2px;background:#A8D4EA;"></span>Current stage</span>
+            <span style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--neutral-300);"></span>Upcoming</span>
+          </div>
+        </div>
+        <div style="overflow-x:auto;padding:16px 0 4px 20px;">
+          <div style="min-width:900px;display:grid;grid-template-columns:minmax(140px,1fr) minmax(220px,2fr) 150px 150px 120px 90px;align-items:stretch;">
+            <span style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-secondary);padding:0 20px 10px 0;">Product</span><span style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-secondary);padding:0 20px 10px 0;">Progress</span><span style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-secondary);padding:0 20px 10px 0;">Current stage</span><span style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-secondary);padding:0 20px 10px 0;">Next stage</span><span style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-secondary);padding:0 20px 10px 0;">Launch</span><span style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-secondary);padding:0 20px 10px 0;text-align:right;padding-right:20px;">Time left</span>
+            <sc-for list="{{ snapRows }}" as="sr" hint-placeholder-count="2">
+              <span style="padding:14px 20px 14px 0;border-top:1px solid var(--border-default);box-sizing:border-box;font-size:15px;font-weight:700;color:var(--text-primary);display:flex;align-items:center;">{{ sr.name }}</span>
+              <div style="padding:14px 20px 14px 0;border-top:1px solid var(--border-default);box-sizing:border-box;display:flex;align-items:center;">
+                <div style="display:flex;align-items:center;gap:12px;width:100%;">
+                  <div style="flex:1;min-width:0;display:flex;gap:2px;height:16px;">
+                    <sc-for list="{{ sr.segs }}" as="sg" hint-placeholder-count="0">
+                      <div style="flex-grow:{{ sg.grow }};flex-basis:0;min-width:4px;height:100%;background:{{ sg.track }};position:relative;border-radius:3px;overflow:hidden;"><div style="position:absolute;left:0;top:0;bottom:0;width:{{ sg.fill }};background:var(--water-blue);"></div></div>
+                    </sc-for>
+                  </div>
+                  <div style="width:48px;flex-shrink:0;text-align:right;display:flex;flex-direction:column;"><span style="font-size:14px;font-weight:700;color:var(--text-primary);">{{ sr.pct }}</span></div>
+                </div>
+              </div>
+              <div style="padding:14px 20px 14px 0;border-top:1px solid var(--border-default);box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;gap:2px;"><span style="font-size:14px;font-weight:600;color:var(--text-primary);">{{ sr.stage }}</span><span style="font-size:12px;color:var(--text-secondary);">{{ sr.stageOf }}</span></div>
+              <div style="padding:14px 20px 14px 0;border-top:1px solid var(--border-default);box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;gap:2px;"><span style="font-size:14px;font-weight:600;color:var(--text-primary);">{{ sr.next }}</span><span style="font-size:12px;color:var(--text-secondary);">{{ sr.nextWhen }}</span></div>
+              <span style="padding:14px 20px 14px 0;border-top:1px solid var(--border-default);box-sizing:border-box;font-size:14px;color:var(--text-primary);display:flex;align-items:center;">{{ sr.launch }}</span>
+              <span style="padding:14px 20px 14px 0;border-top:1px solid var(--border-default);box-sizing:border-box;padding-right:20px;font-size:14px;font-weight:700;color:var(--text-primary);display:flex;align-items:center;justify-content:flex-end;white-space:nowrap;">{{ sr.days }}</span>
+            </sc-for>
+          </div>
+        </div>
+      </div>
       <sc-if value="{{ isDates }}" hint-placeholder-val="{{ false }}">
         <div style="background:var(--surface-page);border:1px solid var(--border-default);border-radius:var(--radius-lg);box-shadow:var(--shadow-card);overflow:hidden;">
           <div style="overflow-x:auto;">
@@ -407,8 +442,32 @@ class Component extends DCLogic {
     legend.push({ label: 'Complete', color: DONE_COLOR }, { label: 'Late', color: LATE_COLOR });
     if (!aligned) legend.push({ label: 'Today', color: 'var(--status-danger)' });
 
+    const lpSpan = (n) => { const a = Math.abs(n); const u = (k, w) => k + ' ' + w + (k === 1 ? '' : 's'); return a < 7 ? u(a, 'day') : a < 30 ? u(Math.floor(a / 7), 'week') : u(Math.floor(a / 30.44), 'month'); };
+    const snapRows = items.map(x => {
+      const { stages, defs } = x;
+      const lab = (s) => (defs.find(d => d.key === s.key) || {}).label || s.key;
+      const cur = stages.find(s => !s.complete && s.start <= today) || stages.find(s => !s.complete) || null;
+      const ci = cur ? stages.indexOf(cur) : -1;
+      const nx = ci >= 0 ? stages.slice(ci + 1).find(s => !s.complete) : null;
+      const dl = x.launch ? diffDays(new Date(x.launch + 'T00:00:00'), today) : null;
+      const segs = stages.map((s, i) => {
+        const len = Math.max(1, diffDays(s.end, s.start) + 1);
+        const f = s.complete ? 100 : today < s.start ? 0 : Math.min(100, Math.round((diffDays(today, s.start) + 1) / len * 100));
+        return { key: s.key + i, grow: String(len), len, f, fill: f + '%', track: i === ci ? '#A8D4EA' : 'var(--neutral-300)' };
+      });
+      const tot = segs.reduce((a, g) => a + g.len, 0) || 1;
+      return { key: x.p.id, name: x.p.name, segs,
+        pct: Math.round(segs.reduce((a, g) => a + g.len * g.f / 100, 0) / tot * 100) + '%',
+        stage: cur ? lab(cur) : stages.length ? 'Ready to launch' : 'Not planned',
+        stageOf: ci >= 0 ? 'Stage ' + (ci + 1) + ' of ' + stages.length : stages.length ? 'All ' + stages.length + ' stages done' : '',
+        next: nx ? lab(nx) : stages.length ? 'Launch' : '\u2014',
+        nextWhen: nx ? (nx.start < today ? 'Was due ' : 'Starts ') + dateLabel(nx.start) : x.launch ? fmtDate(x.launch) : '',
+        launch: x.launch ? fmtDate(x.launch) : 'Not set',
+        days: dl === null ? '\u2014' : dl === 0 ? 'Today' : dl > 0 ? lpSpan(dl) : lpSpan(dl) + ' over' };
+    });
     const n = items.length;
     return {
+      snapRows, snapDateLabel: 'As of ' + today.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
       subtitle: !st.loaded ? 'Loading…' : n + ' project' + (n === 1 ? '' : 's') + (st.view === 'dates' ? ' · dates chart' : aligned ? ' · aligned to each start date' : ' · on a shared calendar'),
       needsAuth: st.authChecked && !st.authUser,
       showEmpty: st.loaded && n === 0,
