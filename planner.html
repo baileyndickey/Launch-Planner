@@ -1885,9 +1885,10 @@ function subRowsFor(subs, key, start, cal) {
   return subSpans((subs || {})[key], cal).map(p => ({ ...p.x, start: workAdd(start, p.s, cal), end: workAdd(start, p.e, cal), days: p.d, hasOffset: p.x.offset != null }));
 }
 function fmtDate(d) { return d ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'; }
-function fmtISO(d) { return d.toISOString().slice(0, 10); }
+function fmtISO(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
 function diffDays(a, b) { return Math.round((a - b) / 86400000); }
+function durLabel(amount, unit) { return amount + ' ' + (Number(amount) === 1 ? String(unit || '').replace(/s$/, '') : unit); }
 function localISO(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 function makeCal(holidays, skipWeekends) {
   const list = (holidays || []).filter(x => x && x.date).slice().sort((a, b) => a.date < b.date ? -1 : 1);
@@ -2499,13 +2500,21 @@ class Component extends DCLogic {
     const planned = chain.map(s => {
       const ov = st.stageDateOverrides[s.key];
       if (!ov) return s;
-      return { ...s, start: new Date(ov.start + 'T00:00:00'), end: new Date(ov.end + 'T00:00:00'), amount: ov.durationDays, unit: 'days', manualOverride: true, fromCalc: !!ov.fromCalc };
+      return { ...s, start: new Date(ov.start + 'T00:00:00'), end: new Date(ov.end + 'T00:00:00'), amount: ov.durationDays, unit: 'days', manualOverride: true, fromCalc: !!ov.fromCalc, pinnedStart: !!ov.pinned };
     });
-    if (!useActuals) return planned;
+    // Dates set in the calculator before starts were flagged: a start that leaves a gap after the previous stage was set explicitly.
+    const cal = this.mainCal();
+    planned.forEach((s, i) => { if (i > 0 && s.fromCalc && !s.pinnedStart && planned[i - 1].manualOverride && fmtISO(s.start) !== fmtISO(nextWorkDay(planned[i - 1].end, cal))) s.pinnedStart = true; });
+    return useActuals ? this.applyActuals(planned) : planned;
+  }
+  // Layers logged actual start/end dates over a planned chain, pushing later stages by the slip.
+  // A stage whose start was set explicitly keeps that date: the slip resets there.
+  applyActuals(planned) {
+    const st = this.state;
     let shift = 0;
     return planned.map(s => {
       const pr = (st.stageProgress || {})[s.key] || {};
-      if (s.manualOverride && !s.fromCalc) shift = 0;
+      if ((s.manualOverride && !s.fromCalc) || s.pinnedStart) shift = 0;
       let start = addDays(s.start, shift), end = addDays(s.end, shift);
       let actualStart = false, actualEnd = false;
       if (pr.started && pr.startedDate) {
@@ -2773,7 +2782,7 @@ class Component extends DCLogic {
     });
   };
   onCopyTimeline = (stagesComputed, productName, launchDate) => {
-    const rows = stagesComputed.map(s => [s.label, fmtDate(s.start), fmtDate(s.end), s.amount + ' ' + s.unit]);
+    const rows = stagesComputed.map(s => [s.label, fmtDate(s.start), fmtDate(s.end), durLabel(s.amount, s.unit)]);
     rows.push(['Launch', fmtDate(launchDate), fmtDate(launchDate), '—']);
 
     const esc = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;');
@@ -3137,7 +3146,7 @@ class Component extends DCLogic {
 
     out += 'VISUAL TIMELINE\n';
     const gRows = [['Stage', 'Start', 'End', 'Duration']];
-    stages.forEach(s => gRows.push([s.label, fmtISO(s.start), fmtISO(s.end), s.amount + ' ' + s.unit]));
+    stages.forEach(s => gRows.push([s.label, fmtISO(s.start), fmtISO(s.end), durLabel(s.amount, s.unit)]));
     out += gRows.map(r => r.map(csvField).join(',')).join('\n') + '\n\n';
 
     out += 'LAUNCH CHECKLIST\n';
@@ -3184,7 +3193,7 @@ class Component extends DCLogic {
     if (ganttCanvas) {
       html += '<img src="' + ganttCanvas.toDataURL('image/png') + '" style="width:100%;max-width:900px;display:block;margin-bottom:28px;" />';
     } else {
-      html += table(['Stage', 'Start', 'End', 'Duration'], stages.map(s => [s.label, fmtDate(s.start), fmtDate(s.end), s.amount + ' ' + s.unit]));
+      html += table(['Stage', 'Start', 'End', 'Duration'], stages.map(s => [s.label, fmtDate(s.start), fmtDate(s.end), durLabel(s.amount, s.unit)]));
     }
     html += '<h2 style="font-family:sans-serif;">Launch Checklist</h2>';
     html += table(['Task', 'Stage', 'Assignees', 'Status'], st.customTasks.map(t => [
@@ -3350,7 +3359,7 @@ class Component extends DCLogic {
   onTogglePricingCalcMenu = () => this.setState(st => ({ pricingCalcMenuOpen: !st.pricingCalcMenuOpen }));
   onPricingCalcDownloadCsvClick = () => { this.onExportPricingCalcCsv(); this.setState({ pricingCalcMenuOpen: false }); };
   onPricingCalcDownloadPdfClick = () => { this.onExportPricingCalcPdf(); this.setState({ pricingCalcMenuOpen: false }); };
-  onOpenCalculator = () => this.setState(st => ({ altEditId: null, calculatorOpen: true, calcHolidays: null, calcSkipWeekends: null, holidayEditId: null, holidayDraftDate: '', holidayDraftEnd: '', holidayDraftName: '', calcAmounts: { ...st.amounts }, calcUnits: { ...st.units }, calcStartOverrides: {}, calcRemoved: {}, calcStages: st.customStages.map(s => ({ ...s })), calcSubstages: JSON.parse(JSON.stringify(st.substages || {})) }));
+  onOpenCalculator = () => this.setState(st => ({ altEditId: null, calculatorOpen: true, calcHolidays: null, calcSkipWeekends: null, holidayEditId: null, holidayDraftDate: '', holidayDraftEnd: '', holidayDraftName: '', ...(this._calcSeed = this.calcSeed()), calcRemoved: {}, calcStages: st.customStages.map(s => ({ ...s })), calcSubstages: JSON.parse(JSON.stringify(st.substages || {})) }));
   onCalcAddSub = (stageKey) => this.setState(st => {
     const subs = { ...(st.calcSubstages || {}) };
     subs[stageKey] = [...(subs[stageKey] || []), { key: 'sub_' + Math.random().toString(36).slice(2, 8), label: 'New Sub-stage', amount: 1, unit: 'weeks' }];
@@ -3389,9 +3398,11 @@ class Component extends DCLogic {
     const j = (x) => JSON.stringify(x || {});
     const pick = (obj, keys) => { const o = {}; keys.forEach(k => { if (obj && obj[k] !== undefined) o[k] = obj[k]; }); return o; };
     const keys = st.customStages.map(s => s.key);
-    if (j(pick({ ...st.amounts, ...st.calcAmounts }, keys)) !== j(pick(st.amounts, keys))) return true;
-    if (j(pick({ ...st.units, ...st.calcUnits }, keys)) !== j(pick(st.units, keys))) return true;
-    if (Object.keys(st.calcStartOverrides || {}).length) return true;
+    const seed = this._calcSeed || { calcAmounts: st.amounts, calcUnits: st.units, calcStartOverrides: {} };
+    const filled = (o) => { const r = {}; Object.keys(o || {}).sort().forEach(k => { if (o[k]) r[k] = o[k]; }); return r; };
+    if (j(pick({ ...st.amounts, ...st.calcAmounts }, keys)) !== j(pick(seed.calcAmounts, keys))) return true;
+    if (j(pick({ ...st.units, ...st.calcUnits }, keys)) !== j(pick(seed.calcUnits, keys))) return true;
+    if (j(filled(st.calcStartOverrides)) !== j(filled(seed.calcStartOverrides))) return true;
     if (Object.keys(st.calcRemoved || {}).some(k => st.calcRemoved[k])) return true;
     if (st.calcStages && j(st.calcStages.map(s => [s.key, s.label])) !== j(st.customStages.map(s => [s.key, s.label]))) return true;
     if (st.calcSubstages && j(st.calcSubstages) !== j(st.substages)) return true;
@@ -3451,8 +3462,8 @@ class Component extends DCLogic {
     const chain = this.getCalcChain(this.computeStages());
     const subs = st.calcSubstages || st.substages || {};
     return { subs, stages: chain.map(s => ({
-      key: s.key, label: (s.label || '').trim() || 'New Stage', start: fmtISO(s.start), end: fmtISO(s.end), durationLabel: s.amount + ' ' + s.unit,
-      subs: subRowsFor(subs, s.key, s.start, this.calcCal()).map(x => ({ label: x.label || 'Sub-stage', start: fmtISO(x.start), end: fmtISO(x.end), durationLabel: x.amount + ' ' + x.unit })),
+      key: s.key, label: (s.label || '').trim() || 'New Stage', start: fmtISO(s.start), end: fmtISO(s.end), durationLabel: durLabel(s.amount, s.unit),
+      subs: subRowsFor(subs, s.key, s.start, this.calcCal()).map(x => ({ label: x.label || 'Sub-stage', start: fmtISO(x.start), end: fmtISO(x.end), durationLabel: durLabel(x.amount, x.unit) })),
     })) };
   }
   onSaveAltEdit = () => {
@@ -3488,7 +3499,7 @@ class Component extends DCLogic {
   };
   onCalcExitKeepEditing = () => this.setState({ calcExitConfirmOpen: false });
   onCalcExitDiscard = () => this.setState({ altEditId: null, calcHolidays: null, calcSkipWeekends: null, calcExitConfirmOpen: false, calculatorOpen: false, calcStages: null, calcSubstages: null, calcRemoved: {}, calcStartOverrides: {} });
-  onResetCalculator = () => { const ea = this.state.altEditId && (this.state.altTimelines || []).find(a => a.id === this.state.altEditId); if (ea) return this.setState({ ...this.altCalcState(ea, false), altEditName: ea.name, altEditNotes: ea.notes || '' }); this.setState(st => ({ calcHolidays: null, calcSkipWeekends: null, calcAmounts: { ...st.amounts }, calcUnits: { ...st.units }, calcStartOverrides: {}, calcRemoved: {}, calcStages: st.customStages.map(s => ({ ...s })), calcSubstages: JSON.parse(JSON.stringify(st.substages || {})) })); };
+  onResetCalculator = () => { const ea = this.state.altEditId && (this.state.altTimelines || []).find(a => a.id === this.state.altEditId); if (ea) return this.setState({ ...this.altCalcState(ea, false), altEditName: ea.name, altEditNotes: ea.notes || '' }); this.setState(st => ({ calcHolidays: null, calcSkipWeekends: null, ...(this._calcSeed = this.calcSeed()), calcRemoved: {}, calcStages: st.customStages.map(s => ({ ...s })), calcSubstages: JSON.parse(JSON.stringify(st.substages || {})) })); };
   onCalcAmountChange = (key, val) => { const n = Math.max(1, parseInt(val, 10) || 1); this.setState(st => ({ calcAmounts: { ...st.calcAmounts, [key]: n } })); };
   onCalcUnitChange = (key, val) => this.setState(st => ({ calcUnits: { ...st.calcUnits, [key]: val } }));
   onCalcStartChange = (key, val) => this.setState(st => ({ calcStartOverrides: { ...st.calcStartOverrides, [key]: val } }));
@@ -3498,13 +3509,30 @@ class Component extends DCLogic {
     const days = Math.max(1, workDiff(newEnd, startDate, this.calcCal()));
     this.setState(st => ({ calcAmounts: { ...st.calcAmounts, [key]: days }, calcUnits: { ...st.calcUnits, [key]: 'days' } }));
   };
-  getCalcChain(stagesComputed) {
+  calcSeed() {
+    const st = this.state; const cal = this.mainCal();
+    const planned = this.computeStages(false);
+    const calcAmounts = { ...st.amounts }, calcUnits = { ...st.units }, calcStartOverrides = {};
+    planned.forEach((s, i) => {
+      const ov = st.stageDateOverrides[s.key];
+      if (!ov) return;
+      const days = Math.max(1, workDiff(s.end, s.start, cal));
+      const need = Math.max(unitDays(st.amounts[s.key], st.units[s.key], cal), subDaysFor(st.substages, s.key, cal));
+      if (days !== need) { calcAmounts[s.key] = days; calcUnits[s.key] = 'days'; }
+      if (i > 0 && (ov.pinned || fmtISO(s.start) !== fmtISO(nextWorkDay(planned[i - 1].end, cal)))) calcStartOverrides[s.key] = fmtISO(s.start);
+    });
+    return { calcAmounts, calcUnits, calcStartOverrides };
+  }
+  getCalcChain(stagesComputed, withActuals = true) {
     const st = this.state;
     const calcAmounts = Object.keys(st.calcAmounts).length ? st.calcAmounts : st.amounts;
     const calcUnits = Object.keys(st.calcUnits).length ? st.calcUnits : st.units;
-    const anchorStart = fmtISO((stagesComputed || this.computeStages())[0].start);
+    const anchorStart = fmtISO(this.computeStages(false)[0].start);
     const defs = (st.calcStages || st.customStages).filter(s => !(st.calcRemoved || {})[s.key]);
-    return this.buildChain(calcAmounts, calcUnits, st.calcStartOverrides, 'start', anchorStart, defs, st.calcSubstages || st.substages, this.calcCal());
+    const planned = this.buildChain(calcAmounts, calcUnits, st.calcStartOverrides, 'start', anchorStart, defs, st.calcSubstages || st.substages, this.calcCal())
+      .map(s => (st.calcStartOverrides || {})[s.key] ? { ...s, pinnedStart: true } : s);
+    if (!withActuals) return planned;
+    return this.applyActuals(planned).map((s, i) => ({ ...s, amount: planned[i].amount, unit: planned[i].unit }));
   }
   onApplyCalculator = (reasonPrefill) => {
     const st = this.state;
@@ -3517,7 +3545,7 @@ class Component extends DCLogic {
     const removeKeys = Object.keys(st.calcRemoved || {}).filter(k => st.calcRemoved[k] && st.customStages.some(s => s.key === k));
     const newDateOverrides = { ...st.stageDateOverrides };
     removeKeys.forEach(k => { delete newDateOverrides[k]; delete newAmounts[k]; delete newUnits[k]; });
-    newStages.forEach(s => { newDateOverrides[s.key] = { start: fmtISO(s.start), end: fmtISO(s.end), durationDays: diffDays(s.end, s.start), fromCalc: true }; });
+    this.getCalcChain(oldStages, false).forEach(s => { newDateOverrides[s.key] = { start: fmtISO(s.start), end: fmtISO(s.end), durationDays: diffDays(s.end, s.start), fromCalc: true, ...(s.pinnedStart ? { pinned: true } : {}) }; });
     const diffs = [];
     newStages.forEach(s => {
       const old = oldStages.find(o => o.key === s.key);
@@ -3581,7 +3609,7 @@ class Component extends DCLogic {
     const st = this.state;
     const chain = this.getCalcChain();
     const rows = [['Stage', 'Start', 'End', 'Duration']];
-    chain.forEach(s => rows.push([s.label, fmtDate(s.start), fmtDate(s.end), s.amount + ' ' + s.unit]));
+    chain.forEach(s => rows.push([s.label, fmtDate(s.start), fmtDate(s.end), durLabel(s.amount, s.unit)]));
     const csv = rows.map(r => r.map(csvField).join(',')).join('\n');
     const productName = st.productName || 'New Product';
     this.downloadCsv(productName.replace(/\s+/g, '-').toLowerCase() + '-calculated-timeline.csv', csv);
@@ -3760,8 +3788,8 @@ class Component extends DCLogic {
           hasSubs: subList.length > 0, expanded, chevron: expanded ? '▾' : '▸', onToggleExpand: () => this.onToggleStageExpanded(s.key),
           subCountLabel: subList.length + ' sub-stage' + (subList.length === 1 ? '' : 's'),
           subExtended: !!s.extendedBySubs, subExtendedNote: s.extendedBySubs ? 'Extended by sub-stages (planned ' + s.ownDays + ' days)' : '',
-          subRows: subList.map(x => ({ key: x.key, label: x.label, startLabel: fmtDate(x.start), endLabel: fmtDate(x.end), durationLabel: x.amount + ' ' + x.unit })),
-          durationLabel: s.amount + ' ' + s.unit,
+          subRows: subList.map(x => ({ key: x.key, label: x.label, startLabel: fmtDate(x.start), endLabel: fmtDate(x.end), durationLabel: durLabel(x.amount, x.unit) })),
+          durationLabel: durLabel(s.amount, s.unit),
           hasPlainBadge: !!badge && !badgeIsLink, badgeIsLink, onBadgeClick: () => this.goToActualDates(s.key), hasBadge: !!badge, badgeLabel: badge ? badge.label : '', badgeBg: badge ? badge.bg : '', badgeColor: badge ? badge.color : '',
           textColor: st.stageComplete[s.key] ? 'var(--text-secondary)' : 'var(--text-primary)' };
       }),
@@ -3811,7 +3839,7 @@ class Component extends DCLogic {
         const changed = !cur[l] || v.start !== cur[l].start || v.end !== cur[l].end;
         return { key: l, label: l, startLabel: fmtDate(d(v.start)), endLabel: fmtDate(d(v.end)),
           durationLabel: diffDays(d(v.end), d(v.start)) + ' days',
-          hasBadge: changed, badgeLabel: 'Differs from current', badgeBg: 'var(--surface-sunken)', badgeColor: 'var(--text-secondary)',
+          hasBadge: changed, hasPlainBadge: changed, badgeLabel: 'Differs from current', badgeBg: 'var(--surface-sunken)', badgeColor: 'var(--text-secondary)',
           textColor: 'var(--text-primary)' };
       });
       const lastEnd = labels.length ? new Date(tlSel.snap[labels[labels.length - 1]].end + 'T00:00:00') : null;
@@ -3940,7 +3968,7 @@ class Component extends DCLogic {
         actualDurationLabel = dd + ' day' + (dd === 1 ? '' : 's') + (ended ? ' actual' : '');
       }
       return {
-        key: s.key, anchorId: 'lp-actual-' + String(s.key).replace(/[^\w-]/g, '_'), label: s.label, projectedLabel: fmtDate(s.start) + ' – ' + fmtDate(s.end), durationLabel: s.amount + ' ' + s.unit,
+        key: s.key, anchorId: 'lp-actual-' + String(s.key).replace(/[^\w-]/g, '_'), label: s.label, projectedLabel: fmtDate(s.start) + ' – ' + fmtDate(s.end), durationLabel: durLabel(s.amount, s.unit),
         started, startedDate, hasStartVariance: !!startVariance, startVariance, startVarianceColor,
         onToggleStarted: () => this.onToggleStageStarted(s.key),
         startedUnsure: !!pr.startedUnsure, startedKnown: !pr.startedUnsure,
